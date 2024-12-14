@@ -8,7 +8,9 @@ import path from 'path';
 import { uploadFile } from './aws';
 import { createClient } from 'redis';
 
-const publisher = createClient();
+const publisher = createClient({
+    url: process.env.REDIS_URL
+});
 publisher.connect();
 
 const app = express();

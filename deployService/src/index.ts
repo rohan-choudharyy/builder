@@ -6,7 +6,9 @@ import path from 'path';
 console.log("Current working directory:", process.cwd());
 console.log("__dirname:", __dirname);
 
-const publisher = createClient();
+const publisher = createClient({
+    url: process.env.REDIS_URL
+});
 publisher.connect();
 
 const subscriber = createClient();
