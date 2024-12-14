@@ -11,7 +11,9 @@ const publisher = createClient({
 });
 publisher.connect();
 
-const subscriber = createClient();
+const subscriber = createClient({
+    url: process.env.REDIS_URL
+});
 subscriber.connect();
 
 async function main(){
