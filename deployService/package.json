@@ -11,14 +11,16 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@types/express": "github:types/express",
+    "@types/express": "^5.0.0",
     "aws-sdk": "^2.1692.0",
     "dotenv-safe": "^9.1.0",
+    "express": "^4.21.2",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
     "redis": "^4.7.0"
   },
   "devDependencies": {
-    "@types/dotenv-safe": "^8.1.6"
+    "@types/dotenv-safe": "^8.1.6",
+    "typescript": "^5.7.2"
   }
 }
