@@ -22,7 +22,7 @@ app.get('/', async(req, res) => {
     const filePath = req.path;
 
     const contents = await s3.getObject({
-        Bucket: process.env.BUCKET!,
+        Bucket: process.env.CLOUDFLARE_BUCKET!,
         Key: `dist/${id}${filePath}`
     }).promise();
 
