@@ -1,10 +1,14 @@
 import { createClient, commandOptions } from "redis";
 import { downloadS3Folder, copyFinalDist } from "./aws";
 import { buildProject } from "./utils";
+import express from 'express';
 import path from 'path';
 
 console.log("Current working directory:", process.cwd());
 console.log("__dirname:", __dirname);
+
+const app = express();
+app.listen(3002);
 
 const publisher = createClient({
     url: process.env.REDIS_URL

@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/express": "github:types/express",
     "aws-sdk": "^2.1692.0",
     "dotenv-safe": "^9.1.0",
     "fs": "^0.0.1-security",
