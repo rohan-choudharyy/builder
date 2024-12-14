@@ -23,7 +23,7 @@ app.get('/', async(req, res) => {
 
     const contents = await s3.getObject({
         Bucket: process.env.CLOUDFLARE_BUCKET!,
-        Key: `dist/${id}${filePath}`
+        Key: `${id}${filePath}`
     }).promise();
 
     const type = filePath.endsWith("html") ? "text/html" : filePath.endsWith("css") ? "text/css" : "application/javascript"
