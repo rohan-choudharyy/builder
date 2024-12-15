@@ -3,6 +3,12 @@ import { downloadS3Folder, copyFinalDist } from "./aws";
 import { buildProject } from "./utils";
 import express from 'express';
 import path from 'path';
+import * as dotenvSafe from 'dotenv-safe';
+
+dotenvSafe.config({
+    path: '.env',
+    example: '.env.example'
+})
 
 console.log("Current working directory:", process.cwd());
 console.log("__dirname:", __dirname);
@@ -11,13 +17,28 @@ const app = express();
 app.listen(3002);
 
 const publisher = createClient({
-    url: process.env.REDIS_URL
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD,
+    socket: {
+        host: process.env.REDIS_URL,
+        port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : undefined
+    }
 });
+
+publisher.on('error', err => console.log('Redis Client Error', err));
+
 publisher.connect();
 
 const subscriber = createClient({
-    url: process.env.REDIS_URL
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD,
+    socket: {
+        host: process.env.REDIS_URL,
+        port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT): undefined
+    }
 });
+
+subscriber.on('error', err => console.log('Redis Client Error', err));
 subscriber.connect();
 
 async function main(){
@@ -35,7 +56,7 @@ async function main(){
         console.log("downloaded");
         await buildProject(id);
         copyFinalDist(id);
-        publisher.hSet("status", id, "deployed")
+        subscriber.hSet("status", id, "deployed")
         
     }
 }

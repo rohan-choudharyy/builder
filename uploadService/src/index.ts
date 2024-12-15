@@ -9,8 +9,16 @@ import { uploadFile } from './aws';
 import { createClient } from 'redis';
 
 const publisher = createClient({
-    url: process.env.REDIS_URL
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD,
+    socket: {
+        host: process.env.REDIS_URL,
+        port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : undefined
+    }
 });
+
+publisher.on('error', err => console.log('Redis Client Error', err));
+
 publisher.connect();
 
 const app = express();
@@ -32,6 +40,7 @@ app.post('/deploy', async(req: Request, res: Response) => {
     }
 
     publisher.lPush("build-queue", id);
+    publisher.hSet("status", id, "uploaded");
     res.json({
         id: id
     });

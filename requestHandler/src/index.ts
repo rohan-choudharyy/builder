@@ -1,6 +1,7 @@
 import express from "express";
 import { S3 } from "aws-sdk";
 import * as dotenvSafe from 'dotenv-safe';
+import path from 'path';
 
 dotenvSafe.config({
     path: '.env',
@@ -15,21 +16,55 @@ const s3 = new S3({
 
 const app = express();
 
-app.get('/', async(req, res) => {
-    const host = req.hostname;
+function getContentType(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    switch(ext) {
+        case '.html': return 'text/html';
+        case '.css': return 'text/css';
+        case '.js': return 'application/javascript';
+        case '.json': return 'application/json';
+        case '.png': return 'image/png';
+        case '.jpg':
+        case '.jpeg': return 'image/jpeg';
+        case '.gif': return 'image/gif';
+        case '.svg': return 'image/svg+xml';
+        case '.webp': return 'image/webp';
+        default: return 'application/octet-stream';
+    }
+}
 
-    const id = host.split(".")[0];
-    const filePath = req.path;
+app.get('*', async(req, res) => {
+    try {
+        const host = req.hostname;
+        const id = host.split(".")[0];
+        
+        const filePath = req.path.startsWith('/') ? req.path : `/${req.path}`;
+        
+        const key = `dist/output/${id}${filePath}`;
 
-    const contents = await s3.getObject({
-        Bucket: process.env.CLOUDFLARE_BUCKET!,
-        Key: `${id}${filePath}`
-    }).promise();
+        console.log(`Attempting to retrieve file: ${key}`);
 
-    const type = filePath.endsWith("html") ? "text/html" : filePath.endsWith("css") ? "text/css" : "application/javascript"
-    res.set("Content-Type", type);
+        const contents = await s3.getObject({
+            Bucket: process.env.CLOUDFLARE_BUCKET!,
+            Key: key
+        }).promise();
 
-    res.send(contents.Body);
+        const type = getContentType(filePath);
+        res.set("Content-Type", type);
+
+        res.send(contents.Body);
+    } catch (error) {
+        console.error('Error retrieving file:', error);
+        
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'NoSuchKey') {
+            res.status(404).send('File not found');
+        } else {
+            res.status(500).send('Internal server error');
+        }
+    }
 })
 
-app.listen(3001);
+const PORT = 3001;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

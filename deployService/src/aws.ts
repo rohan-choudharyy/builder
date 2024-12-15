@@ -1,8 +1,7 @@
 import { S3 } from "aws-sdk";
 import * as dotenvSafe from "dotenv-safe";
 import fs from "fs";
-import { console } from "inspector";
-import path, { resolve } from "path";
+import path from "path";
 
 dotenvSafe.config({
     path: '.env',
@@ -13,14 +12,15 @@ const s3 = new S3({
     accessKeyId: process.env.CLOUDFLARE_ACCESS_KEY_ID,
     secretAccessKey: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
     endpoint: process.env.CLOUDFLARE_ENDPOINT
-})
+});
 
-export async function downloadS3Folder(prefix: string){
-    // Use absolute path and ensure it's created
+
+
+export async function downloadS3Folder(prefix: string) {
     const outputDir = path.resolve(process.cwd(), 'dist/output');
     
     try {
-        // Explicitly create the output directory
+
         fs.mkdirSync(outputDir, { recursive: true });
     } catch (mkdirError) {
         console.error("Failed to create output directory:", mkdirError);
@@ -53,7 +53,6 @@ export async function downloadS3Folder(prefix: string){
                 const dirName = path.dirname(finalOutput);
                 
                 try {
-                    // Ensure directory exists
                     fs.mkdirSync(dirName, { recursive: true });
                     
                     const outputFile = fs.createWriteStream(finalOutput);
@@ -90,34 +89,83 @@ export async function downloadS3Folder(prefix: string){
     }
 }
 
-const getAllFiles = (folderPath: string) => {
+
+const getAllFiles = (folderPath: string): string[] => {
     let response: string[] = [];
     const allFilesAndFolder = fs.readdirSync(folderPath);
+    
     allFilesAndFolder.forEach(file => {
         const fullFilePath = path.join(folderPath, file);
         if(fs.statSync(fullFilePath).isDirectory()){
-            response = response.concat(getAllFiles(fullFilePath))
-        } else{
+            response = response.concat(getAllFiles(fullFilePath));
+        } else {
             response.push(fullFilePath);
         }
     });
+    
     return response;
 }
 
-const uploadFile = async (fileName: string, localFilePath: string) => {
-    const fileContent = fs.readFileSync(localFilePath);
-    const response = await s3.upload({
-        Body: fileContent,
-        Bucket: process.env.CLOUDFLARE_BUCKET!,
-        Key: fileName,
-    }).promise();
-    console.log(response);
+
+function getContentType(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    switch(ext) {
+        case '.html': return 'text/html';
+        case '.css': return 'text/css';
+        case '.js': return 'application/javascript';
+        case '.json': return 'application/json';
+        case '.png': return 'image/png';
+        case '.jpg':
+        case '.jpeg': return 'image/jpeg';
+        case '.gif': return 'image/gif';
+        case '.svg': return 'image/svg+xml';
+        case '.webp': return 'image/webp';
+        default: return 'application/octet-stream';
+    }
 }
 
-export function copyFinalDist(id: string){
-    const folderPath = path.join(__dirname, `output/${id}/dist`);
+
+const uploadFile = async (fileName: string, localFilePath: string) => {
+    try {
+        const fileContent = fs.readFileSync(localFilePath);
+        const uploadParams = {
+            Body: fileContent,
+            Bucket: process.env.CLOUDFLARE_BUCKET!,
+            Key: fileName,
+            ContentType: getContentType(localFilePath)
+        };
+
+        const response = await s3.upload(uploadParams).promise();
+        console.log(`Successfully uploaded ${fileName}:`, response);
+        return response;
+    } catch (error) {
+        console.error(`Error uploading ${fileName}:`, error);
+        throw error;
+    }
+}
+
+
+export async function copyFinalDist(id: string) {
+    const folderPath = path.join(__dirname, `output/${id}/build`);
+
+    if (!fs.existsSync(folderPath)) {
+        console.error(`Directory does not exist: ${folderPath}`);
+        return; 
+    }
+
     const allFiles = getAllFiles(folderPath);
-    allFiles.forEach(file => {
-        uploadFile(`dist/${id}/` + file.slice(folderPath.length + 1), file);
-    }) 
+    
+    const uploadPromises = allFiles.map(async file => {
+        const relativePath = path.relative(folderPath, file);
+        const uploadKey = `dist/output/${id}/${relativePath}`;
+        console.log(`Uploading file: ${file} to key: ${uploadKey}`);
+        try {
+            await uploadFile(uploadKey, file);
+        } catch (err) {
+            console.error(`Failed to upload ${file}:`, err);
+        }
+    });
+
+    await Promise.all(uploadPromises);
+    console.log('All files upload process completed');
 }
